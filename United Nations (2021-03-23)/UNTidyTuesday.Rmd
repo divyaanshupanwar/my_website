@@ -1,0 +1,70 @@
+---
+title: "TidyTuesday UN Dataset"
+author: "Divyaanshu Panwar"
+date: "4/24/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(readxl)
+library(countrycode)
+library(tidyr)
+library(forcats)
+library(ggplot2)
+library(tidytuesdayR)
+library(stringr)
+library(ggdark)
+library(ggthemes)
+
+```
+
+## Getting Data
+
+
+```{r message=FALSE}
+# Getting the Data
+
+unvotes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/unvotes.csv')
+roll_calls <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/roll_calls.csv')
+issues <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/issues.csv')
+
+
+```
+
+
+## Data Wrangling 
+
+```{r message = FALSE}
+temp <- roll_calls %>%
+  filter(str_detect(short,"HUMAN\\sRIGHTS") | str_detect(descr,"HUMAN\\sRIGHTS"))
+
+temp<- left_join(temp, unvotes)
+
+temp<- temp%>%
+  filter(importantvote == 1)%>%
+  select(country_code,country,vote)%>%
+  group_by(country_code,country,vote)%>%
+  summarize(counting = n())%>%
+  filter(vote == "abstain")%>%
+  arrange(desc(counting))
+
+temp <- temp[1:10,]  
+
+```
+
+## Data Visualization
+
+You can also embed plots, for example:
+
+```{r message=FALSE}
+
+ggplot(temp)+
+  geom_col(aes(x=reorder(country, counting),y=counting),fill="maroon")+     
+  coord_flip()+
+  labs(y= "Number of times abstained from voting", title="Countries which have abstained from voting\n about important Human Rights issues in the\n UN the highest number of times")+
+  dark_mode(theme_fivethirtyeight())
+
+```

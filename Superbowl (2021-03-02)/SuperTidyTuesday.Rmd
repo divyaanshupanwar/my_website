@@ -1,0 +1,112 @@
+---
+title: "Superbowl TidyTuesday"
+author: "Divyaanshu Panwar"
+date: "3/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(tidytuesdayR)
+library(stringr)
+library(lubridate)
+library(ggdark)
+library(ggthemes)
+```
+
+This is my first TidyTuesday participation and oh how wonderful is the topic!
+
+## Getting Data
+
+The data this week came from FiveThirtyEight though the original source was superbowl-ads.com. It included information about the various themes in the past superbowl ads and their perception on YouTube. 
+
+```{r message=FALSE, results=FALSE}
+# Get the Data
+
+# Read in with tidytuesdayR package 
+# This loads the the dataset for the week of interest
+
+
+tuesdata <- tidytuesdayR::tt_load('2021-03-02')
+tuesdata <- tidytuesdayR::tt_load(2021, week = 10)
+
+youtube <- tuesdata$youtube
+
+
+```
+
+
+## Data Wrangling 
+
+
+
+```{r message=FALSE}
+attach(youtube)
+
+tempsuper<- youtube %>%
+  mutate(mycategory = ifelse(animals & funny & !celebrity & !use_sex,"Animals and Humour",
+                      ifelse(celebrity & use_sex,"Celebrities and Sex","N/A")))%>%
+  select(mycategory,view_count, like_count , dislike_count)
+
+tempsuper<- na.omit(tempsuper)
+
+ tempsuper<- tempsuper%>%
+   group_by(mycategory)%>%
+  summarise(totviews = sum(view_count), totlikes = sum(like_count), totdislikes=sum(dislike_count))%>%
+   filter(mycategory != "N/A")
+ 
+tempsuper2 <- tempsuper   
+     
+ tempsuper <- select(tempsuper,-totviews)
+ 
+ 
+ tempsuper <- pivot_longer(tempsuper,!mycategory, names_to = "classification", values_to = "value")
+ 
+ tempsuper <- tempsuper%>%
+   mutate(classification = str_replace(classification, "totlikes", "Total Likes"), 
+       classification = str_replace(classification, "totdislikes", "Total Dislikes"))
+
+ tempsuper <- tempsuper%>%
+   mutate(classification = as.factor(classification))%>%
+   mutate(classification = fct_relevel(classification,"Total Likes"))
+ 
+ 
+ tempsuper2 <- tempsuper2 %>%
+   mutate(ratio = totlikes/totdislikes)
+
+```
+
+
+
+## Data Visualization
+
+The graphs are plotted as follows:
+
+```{r message=FALSE}
+
+ggplot(data = tempsuper, aes(x = mycategory, y = value, fill = classification)) +
+  geom_bar(stat = "identity", position = position_dodge(), alpha = 0.75)  +
+  scale_fill_brewer(palette = "Dark2")+
+  labs(x = "\n Category", y = "Frequency\n", title = "\n              Animals and Humour or Celebrities and Sex? \n",fill=element_blank())+
+  theme_minimal()
+  
+
+```
+
+It would be more useful to look at the like to dislike ratios because the view counts are heavily unbalanced.
+
+```{r message=FALSE}
+ggplot(data = tempsuper2, aes(x = mycategory, y = ratio, fill = mycategory)) +
+  geom_bar(stat = "identity", position = position_dodge(), alpha = 0.75)  +
+  scale_fill_manual(values = c("orange","black"))+
+  labs(x = element_blank(), y = "Ratio\n", title = "\n              Animals and Humour or Celebrities and Sex?\n                           Looking at like/dislike ratios \n", fill = "Category") +
+  theme_minimal()+
+  theme(axis.text.x = element_blank())
+  
+```
+
+
+

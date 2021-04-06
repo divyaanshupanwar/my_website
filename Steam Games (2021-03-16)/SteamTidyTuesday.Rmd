@@ -1,0 +1,102 @@
+---
+title: "Steam Games TidyTuesday"
+author: "Divyaanshu Panwar"
+date: "17th March 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(tidytuesdayR)
+library(stringr)
+library(lubridate)
+library(ggdark)
+library(ggthemes)
+```
+
+## Getting Data
+
+The data was originally from Steam by way of Kaggle and originally came from SteamCharts. The data was scraped and uploaded to Kaggle. The data from the `tidytuesday` GitHub is imported as follows :
+
+```{r results=FALSE,message=FALSE}
+# Getting the Data
+
+# Reading in with tidytuesdayR package 
+# This loads the dataset for the week of interest
+
+tuesdata <- tidytuesdayR::tt_load('2021-03-16')
+tuesdata <- tidytuesdayR::tt_load(2021, week = 12)
+
+games <- tuesdata$games
+```
+
+## Data Wrangling 
+
+On initial impressions it can be seen that some structuring of the data can be problematic, especially the date. So I change it to a usable format. Also some game names are very long and have popularized abbreviations so I use those.
+
+
+```{r message=FALSE}
+attach(games)
+
+games <- games %>%
+  unite(yearmonth, month:year)%>%
+  mutate(date = yearmonth)%>%
+  select(-yearmonth)
+
+games$date <- str_replace_all(games$date, "_" , " ")
+
+games <- games %>%
+  mutate(gamename = str_replace(gamename, "PLAYERUNKNOWN'S BATTLEGROUNDS", "PUBG"), 
+       gamename = str_replace(gamename, "Counter-Strike: Global Offensive", "CS:GO"))
+```
+
+## Info Gathering
+
+I want to know about the most popular games on Steam on the basis of the overall average of the average number of players by month to use it to plot a graph later.
+
+```{r message=FALSE}
+temp2077 <- games
+  
+options(scipen = 999)
+
+temp2077 <- temp2077 %>%
+  group_by(gamename)%>%
+  summarize(mean_avg = mean(avg))%>%
+  arrange(desc(mean_avg))
+
+temp2077 <- temp2077[1:4,]
+
+```
+## Data Visualization
+
+Using the following code, I obtain the final dataset to use in creating the desired graph.
+
+```{r message=FALSE}
+
+games <- games %>%
+  mutate(date = lubridate::my(date))
+
+finaldata <- games %>%
+  filter(gamename %in% temp2077$gamename)
+
+```
+
+The final graph is as follows : 
+
+```{r message=FALSE}
+
+ggplot(finaldata, aes(x=date, y=avg, fill=gamename))+
+  geom_col(position="dodge")+
+  labs(title= "The Most Popular Games on Steam by \nAverage Monthly Players", 
+       y="Average number of players", x="Date")+
+  scale_fill_manual("Name of Game",values = c("white","red","yellow","#0a9cf5"))+
+  dark_mode(theme_fivethirtyeight())
+  
+  
+```
+
+
+See those small red columns on the bottom right? Yep. That's Cyberpunk 2077
